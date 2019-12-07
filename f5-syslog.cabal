@@ -1,0 +1,41 @@
+cabal-version: 2.4
+name: f5-syslog
+version: 0.1.0.0
+synopsis: Decode F5 logs
+bug-reports: https://github.com/layer-3-communications/f5-syslog/issues
+license: BSD-3-Clause
+license-file: LICENSE
+author: Andrew Martin
+maintainer: amartin@layer3com.com
+copyright: 2019 Layer 3 Communications
+category: Data
+build-type: Simple
+extra-source-files: CHANGELOG.md
+
+library
+  exposed-modules: F5.Syslog
+  build-depends:
+    , array-builder >=0.1 && <0.2
+    , array-chunks >=0.1.1 && <0.2
+    , base >=4.12 && <5
+    , bytesmith >= 0.3.1 && <0.4
+    , byteslice >= 0.1.4 && <0.2
+    , ip >=1.7 && <1.8
+    , primitive >= 0.7 && <0.8
+  hs-source-dirs: src
+  default-language: Haskell2010
+
+test-suite test
+  type: exitcode-stdio-1.0
+  hs-source-dirs: test, common
+  main-is: Main.hs
+  other-modules:
+    Sample
+  build-depends:
+    , base
+    , f5-syslog
+    , primitive
+    , byteslice
+    , ip
+  ghc-options: -Wall -O2
+  default-language: Haskell2010
