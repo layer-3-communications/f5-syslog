@@ -25,6 +25,8 @@ main = do
   testSslRequest1
   putStrLn "testSslAsm1"
   testAsm1
+  putStrLn "testSslAsm2"
+  testAsm2
   putStrLn "End"
 
 testSslAccess1 :: IO ()
@@ -55,6 +57,15 @@ testAsm1 = case decode S.asm_1 of
   Left err -> throwIO err
   Right (LogAsm Asm{destinationPort}) ->
     if | destinationPort /= 443 -> fail "bad destination port"
+       | otherwise -> pure ()
+  Right _ -> fail "wrong log type"
+
+testAsm2 :: IO ()
+testAsm2 = case decode S.asm_2 of
+  Left err -> throwIO err
+  Right (LogAsm Asm{destinationPort,responseCode}) ->
+    if | destinationPort /= 443 -> fail "bad destination port"
+       | responseCode /= 302 -> fail "bad response code"
        | otherwise -> pure ()
   Right _ -> fail "wrong log type"
 

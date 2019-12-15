@@ -4,6 +4,7 @@ module Sample
   ( ssl_access_1
   , ssl_request_1
   , asm_1
+  , asm_2
   ) where
 
 import Data.Bytes (Bytes)
@@ -58,6 +59,24 @@ asm_1 = pack $ concat
   , "\"2a0276a17b6b7d70\",\"Informational\",\"\",\"\",\"4131\",\"\","
   , "\"15267537619763049516\",\"f5.example.com\",\"/foo/bar/baz\","
   , "\"N/A\",\"\",\"Illegal HTTP status in response\",\"N/A\",\"N/A\""
+  ]
+
+asm_2 :: Bytes
+asm_2 = pack $ concat
+  [ "Dec 15 06:33:48 f5.example.co.uk ASM:\"\","
+  , "\"2019-12-15 06:33:48\",\"192.0.2.13\",\"443\",\"US\","
+  , "\"/foo/BAR.COM\",\"N/A\",\"192.0.2.35\","
+  , "\"192.0.2.67%0\",\"192.0.2.63\",\"GET\",\"2016-12-31 "
+  , "09:35:53\",\"/foo/BAR.COM\",\"HTTPS\",\"\","
+  , "\"GET /... HTTP/1.1\\r\\nCache-Control: no-cache\\r\\nConnection: "
+  , "Keep-Alive\\r\\nPragma: no-cache\\r\\nAccept: */*\\r\\nAccept-Encoding: "
+  , "gzip, deflate\\r\\nFrom: bingbot(at)microsoft.com\\r\\nHost: "
+  , "www.bar.com\\r\\nUser-Agent: Mozilla/5.0 (compatible; "
+  , "bingbot/2.0; +http://www.bing.com/bingbot.htm)\\r\\n\\r\\n\","
+  , "\"passed\",\"Only illegal requests are logged\",\"302\",\"0\","
+  , "\"50ef75c2d6161201\",\"Informational\",\"\",\"\",\"4331\",\"\","
+  , "\"15267537619804775945\",\"f5.example.co.uk\","
+  , "\"/...\",\"N/A\",\"\",\"\",\"N/A\",\"N/A\""
   ]
 
 -- Incomplete Reference Parser
