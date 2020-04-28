@@ -1,9 +1,10 @@
 {-# language DuplicateRecordFields #-}
+{-# language LambdaCase #-}
 {-# language MultiWayIf #-}
 {-# language NamedFieldPuns #-}
 {-# language TypeApplications #-}
 
-import F5.Syslog (Log(..),SslAccess(..),SslRequest(..),Asm(..),decode)
+import F5.Syslog (Log(..),SslAccess(..),SslRequest(..),Asm(..),Attribute(..),decode)
 
 import Control.Exception (throwIO)
 import Data.Primitive (ByteArray)
@@ -27,6 +28,8 @@ main = do
   testAsm1
   putStrLn "testSslAsm2"
   testAsm2
+  putStrLn "testSslAsm3"
+  testAsm3
   putStrLn "End"
 
 testSslAccess1 :: IO ()
@@ -66,6 +69,15 @@ testAsm2 = case decode S.asm_2 of
   Right (LogAsm Asm{destinationPort,responseCode}) ->
     if | destinationPort /= 443 -> fail "bad destination port"
        | responseCode /= 302 -> fail "bad response code"
+       | otherwise -> pure ()
+  Right _ -> fail "wrong log type"
+
+testAsm3 :: IO ()
+testAsm3 = case decode S.asm_3 of
+  Left err -> throwIO err
+  Right (LogAsmKeyValue pairs) ->
+    if | notElem (DestinationPort 443) pairs -> fail "bad destination port"
+       | notElem (ResponseCode 200) pairs -> fail "bad response code"
        | otherwise -> pure ()
   Right _ -> fail "wrong log type"
 

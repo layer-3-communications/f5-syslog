@@ -5,6 +5,7 @@ module Sample
   , ssl_request_1
   , asm_1
   , asm_2
+  , asm_3
   ) where
 
 import Data.Bytes (Bytes)
@@ -78,6 +79,38 @@ asm_2 = pack $ concat
   , "\"15267537619804775945\",\"f5.example.co.uk\","
   , "\"/...\",\"N/A\",\"\",\"\",\"N/A\",\"N/A\""
   ]
+
+asm_3 :: Bytes
+asm_3 = pack $ concat
+  [ "<134>Apr 28 06:01:40 FOO-BAR-F5-Appliance.example.com "
+  , "ASM:unit_hostname=\"FOO-BAR-F5-Appliance.example.com\","
+  , "management_ip_address=\"192.0.2.65\","
+  , "http_class_name=\"/path/to/resource\","
+  , "web_application_name=\"/path/to/resource\","
+  , "policy_name=\"/path/to/resource\","
+  , "policy_apply_date=\"2016-12-31 09:35:53\",violations=\"\","
+  , "support_id=\"14268534616787439415\",request_status=\"passed\","
+  , "response_code=\"200\",ip_client=\"192.0.2.173\",route_domain=\"0\","
+  , "method=\"POST\",protocol=\"HTTPS\",query_string=\"\","
+  , "x_forwarded_for_header_value=\"N/A\",sig_ids=\"\",sig_names=\"\","
+  , "date_time=\"2020-04-28 06:01:40\",severity=\"Informational\","
+  , "attack_type=\"\",geo_location=\"US\",ip_address_intelligence=\"N/A\","
+  , "username=\"N/A\",session_id=\"fb3gda4a71152d0a\",src_port=\"58030\","
+  , "dest_port=\"443\",dest_ip=\"192.0.2.76\",sub_violations=\"\","
+  , "virus_name=\"N/A\",uri=\"/the/path\","
+  , "request=\"POST /the/path HTTP/1.1\\r\\nHost: www.example.com\\r\\n"
+  , "Connection: keep-alive\\r\\nContent-Length: 235\\r\\nUser-Agent: "
+  , "Mozilla/5.0 (Linux; Android 9; LM-Q720) AppleWebKit/537.36 (KHTML, "
+  , "like Gecko) Chrome/81.0.4044.117 Mobile Safari/537.36\\r\\n"
+  , "Content-Type: application/x-www-form-urlencoded; charset=UTF-8\\r\\n"
+  , "Accept: */*\\r\\nOrigin: https://www.example.com\\r\\n"
+  , "Sec-Fetch-Site: same-origin\\r\\nSec-Fetch-Mode: cors\\r\\n"
+  , "Sec-Fetch-Dest: empty\\r\\nReferer: "
+  , "https://www.example.com/other/resource/page?foo=bar&baz=1"
+  , "\\r\\nAccept-Encoding: gzip, deflate, br\\r\\nAccept-Language: "
+  , "en-US,en;q=0.9\\r\\n\\r\\n\""
+  ]
+
 
 -- Incomplete Reference Parser
 -- 

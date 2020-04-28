@@ -3,6 +3,7 @@
 {-# language DeriveAnyClass #-}
 {-# language DuplicateRecordFields #-}
 {-# language LambdaCase #-}
+{-# language MagicHash #-}
 {-# language NamedFieldPuns #-}
 
 module F5.Syslog
@@ -10,6 +11,7 @@ module F5.Syslog
   , Asm(..)
   , SslRequest(..)
   , SslAccess(..)
+  , Attribute(..)
   , decode
   ) where
 
@@ -19,10 +21,12 @@ import Data.Bytes.Types (Bytes(Bytes))
 import Data.Bytes.Parser (Parser,Result(Success,Failure),Slice(Slice))
 import Data.Chunks (Chunks)
 import Data.Word (Word16,Word64)
+import GHC.Exts (Ptr(Ptr))
 import Net.Types (IPv4)
 
 import qualified Net.IPv4 as IPv4
 import qualified Data.Builder.ST as Builder
+import qualified Data.Bytes as Bytes
 import qualified Data.Bytes.Parser as P
 import qualified Data.Bytes.Parser.Latin as Latin
 import qualified Data.Bytes.Parser.Unsafe as Unsafe
@@ -31,6 +35,19 @@ data Log
   = LogSslRequest SslRequest
   | LogSslAccess SslAccess
   | LogAsm Asm
+  | LogAsmKeyValue (Chunks Attribute)
+
+data Attribute
+  = DestinationIp {-# UNPACK #-} !IPv4
+  | DestinationPort {-# UNPACK #-} !Word16
+  | SourcePort {-# UNPACK #-} !Word16
+  | RequestMethod {-# UNPACK #-} !Bytes
+  | Scheme {-# UNPACK #-} !Bytes
+  | Headers !(Chunks Header)
+  | Action {-# UNPACK #-} !Bytes
+  | ResponseCode {-# UNPACK #-} !Word64
+  | RequestTarget {-# UNPACK #-} !Bytes
+  deriving stock (Eq)
 
 data Asm = Asm
   { destinationIp :: {-# UNPACK #-} !IPv4
@@ -78,7 +95,7 @@ data SslAccess = SslAccess
 data Header = Header
   { name :: {-# UNPACK #-} !Bytes
   , value :: {-# UNPACK #-} !Bytes
-  }
+  } deriving stock (Eq)
 
 data Error
   = AsmDatetime
@@ -111,15 +128,16 @@ data Error
   | MalformedSecondarySourceIp
   | MalformedSecondaryTimestamp
   | MalformedSourceIp
+  | MalformedSourcePort
   | MissingIdentifier
   | MissingNewlineAfterHeader
   | MissingNewlineAfterLastHeader
   | PathDomainEndOfInput
-  | ResponseBytes
-  | ResponseCode
+  | MalformedResponseBytes
   | SecondaryPathDomainEndOfInput
   | SslCipherSuite
   | SslProtocol
+  | SyslogPriority
   | ThreatEndOfInput
   | UnknownFieldA
   | UnknownFieldB
@@ -139,6 +157,7 @@ data Error
   | UnknownFieldP
   | UnknownFieldQ
   | UnrecognizedIdentifier
+  | EndOfInputInKey 
   deriving stock (Show)
   deriving anyclass (Exception)
 
@@ -148,8 +167,16 @@ decode b = case P.parseBytes parser b of
   P.Failure e -> Left e
   P.Success (Slice _ _ r) -> Right r
 
+skipSyslogPriority :: Parser Error s ()
+skipSyslogPriority = Latin.trySatisfy (== '<') >>= \case
+  True -> do
+    Latin.skipDigits1 SyslogPriority
+    Latin.char SyslogPriority '>'
+  False -> pure ()
+
 parser :: Parser Error s Log
 parser = do
+  skipSyslogPriority
   skipInitialDate
   !host <- P.takeTrailedBy HostEndOfInput 0x20 -- space
   Latin.any MissingIdentifier >>= \case
@@ -168,9 +195,80 @@ parser = do
           parserSslAccess host
         _ -> P.fail UnrecognizedIdentifier
     'A' -> do
-      Latin.char4 UnrecognizedIdentifier 'S' 'M' ':' '"'
-      parserAsm host
+      Latin.char3 UnrecognizedIdentifier 'S' 'M' ':'
+      -- Two different paths. If we see a double quote, go for the
+      -- CSV-style format. On any other character, we assume named
+      -- pairs.
+      Latin.trySatisfy (=='"') >>= \case
+        True -> parserAsm host
+        False -> do
+          r <- parserAsmKeyValue =<< P.effect Builder.new
+          pure (LogAsmKeyValue r)
     _ -> P.fail UnrecognizedIdentifier
+
+parserAsmKeyValue :: Builder s Attribute -> Parser Error s (Chunks Attribute)
+parserAsmKeyValue !b0 = do
+  key <- Latin.takeTrailedBy EndOfInputInKey '='
+  b1 <- case Bytes.length key of
+    13 | Bytes.equalsCString (Ptr "response_code"#) key -> do
+          !code <- quotedW64 MalformedResponseCode
+          let !x = ResponseCode code
+          P.effect (Builder.push x b0)
+    11 | Bytes.equalsCString (Ptr "source_port"#) key -> do
+           !port <- quotedPort MalformedSourcePort
+           let !x = SourcePort port
+           P.effect (Builder.push x b0)
+    9  | Bytes.equalsCString (Ptr "dest_port"#) key -> do
+           !port <- quotedPort MalformedDestinationPort
+           let !x = DestinationPort port
+           P.effect (Builder.push x b0)
+    7  | Bytes.equalsCString (Ptr "dest_ip"#) key -> do
+           !addr <- quotedIp MalformedDestinationIp
+           let !x = DestinationIp addr
+           P.effect (Builder.push x b0)
+       | Bytes.equalsCString (Ptr "request"#) key -> do
+           Latin.char MalformedHttpRequestMethod '"'
+           -- Now the big one, the HTTP request and headers.
+           -- We skip the request method since it showed up earlier
+           Latin.skipTrailedBy MalformedHttpRequestMethod ' '
+           -- We skip the path since it shows up later
+           Latin.skipTrailedBy MalformedHttpPath ' '
+           -- Skip the HTTP version
+           Latin.char5 MalformedHttpVersion 'H' 'T' 'T' 'P' '/'
+           match isDigit MalformedHttpVersion
+           Latin.char MalformedHttpVersion '.'
+           match isDigit MalformedHttpVersion
+           Latin.char4 MalformedHttpVersion '\\' 'r' '\\' 'n'
+           -- Parse all the headers
+           headers <- allHeaders =<< P.effect Builder.new
+           Latin.char UnknownFieldK '"'
+           let !x = Headers headers
+           P.effect (Builder.push x b0)
+    6  | Bytes.equalsCString (Ptr "method"#) key -> do
+           !y <- quotedBytes MalformedMethod
+           let !x = RequestMethod y
+           P.effect (Builder.push x b0)
+    _ -> do
+      Latin.char UnknownFieldG '"'
+      Latin.skipTrailedBy UnknownFieldG '"'
+      pure b0
+  P.isEndOfInput >>= \case
+    True -> P.effect (Builder.freeze b1)
+    False -> do
+      Latin.char UnknownFieldH ','
+      parserAsmKeyValue b1
+
+quotedBytes :: e -> Parser e s Bytes
+quotedBytes e = Latin.char e '"' *> Latin.takeTrailedBy e '"'
+
+quotedIp :: e -> Parser e s IPv4
+quotedIp e = Latin.char e '"' *> IPv4.parserUtf8Bytes e <* Latin.char e '"'
+
+quotedPort :: e -> Parser e s Word16
+quotedPort e = Latin.char e '"' *> Latin.decWord16 e <* Latin.char e '"'
+
+quotedW64 :: e -> Parser e s Word64
+quotedW64 e = Latin.char e '"' *> Latin.decWord64 e <* Latin.char e '"'
 
 parserAsm :: Bytes -> Parser Error s Log
 parserAsm !host = do
@@ -285,9 +383,9 @@ parserSslAccess !host = do
   Latin.char HttpPath '"'
   path <- P.takeTrailedBy HttpPath 0x22 -- double quote
   Latin.char HttpPath ' '
-  responseCode <- Latin.decWord64 ResponseCode
-  Latin.char ResponseCode ' '
-  responseBytes <- Latin.decWord64 ResponseBytes
+  responseCode <- Latin.decWord64 MalformedResponseCode
+  Latin.char MalformedResponseCode ' '
+  responseBytes <- Latin.decWord64 MalformedResponseBytes
   P.endOfInput EncounteredLeftovers
   pure (LogSslAccess (SslAccess {path,user,responseCode,responseBytes,client,host}))
 
@@ -304,7 +402,7 @@ parserSslRequest !host = do
   Latin.char HttpPath '"'
   path <- P.takeTrailedBy HttpPath 0x22 -- double quote
   Latin.char HttpPath ' '
-  _ <- Latin.decWord64 ResponseBytes
+  _ <- Latin.decWord64 MalformedResponseBytes
   P.endOfInput EncounteredLeftovers
   pure (LogSslRequest (SslRequest {protocol,cipherSuite,path}))
 
