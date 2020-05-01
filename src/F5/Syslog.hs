@@ -441,14 +441,16 @@ emptyBytes = do
   arr <- Unsafe.expose
   pure (Bytes arr 0 0)
 
--- The initial datetime is formatted like this: Dec 6 10:04:50.
--- It is always missing the year. This consumes a trailing space.
+-- The initial datetime is formatted like this: Dec  6 10:04:50.
+-- Notice that if the day of the month is less than ten it gets
+-- padded by a space. The date is always missing the year. This
+-- parser consumes a trailing space.
 skipInitialDate :: Parser Error s ()
 skipInitialDate = do
   match isUpper LeadingDatetimeMonth
   match isLower LeadingDatetimeMonth
   match isLower LeadingDatetimeMonth
-  Latin.char LeadingDatetimeMonth ' '
+  Latin.skipChar1 LeadingDatetimeMonth ' '
   Latin.skipDigits1 LeadingDatetimeDay
   Latin.char LeadingDatetimeDay ' '
   match isDigit LeadingDatetimeHour

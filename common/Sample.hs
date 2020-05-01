@@ -115,13 +115,13 @@ asm_3 = pack $ concat
   , "https://www.example.com/other/resource/page?foo=bar&baz=1"
   , "\\r\\nAccept-Encoding: gzip, deflate, br\\r\\nAccept-Language: "
   , "en-US,en;q=0.9\\r\\n\\r\\n\""
-  , "\n\n" -- Tests that we can handle spurious trailing newlines
+  , "\r\n" -- Tests that we can handle spurious trailing newlines
   ]
 
 asm_4 :: Bytes
 asm_4 = pack $ T.unpack $ T.replace "\n" ""
   [text|
-    Oct 1 12:09:21 FOO-BAR-F5-Appliance-X.example.com ASM:unit_hostname=
+    Oct  1 12:09:21 FOO-BAR-F5-Appliance-X.example.com ASM:unit_hostname=
     "FOO-BAR-F5-Appliance-X.example.com",management_ip_address="192.0.2.13",
     http_class_name="/Foo/Bar.COM",web_application_name=
     "/Foo/Bar.COM",policy_name="/Common/Foo-Bar.COM",
