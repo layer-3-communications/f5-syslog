@@ -272,9 +272,16 @@ parserAsmKeyValue !b0 = do
       pure b0
   P.isEndOfInput >>= \case
     True -> P.effect (Builder.freeze b1)
-    False -> do
-      Latin.char UnknownFieldH ','
-      parserAsmKeyValue b1
+    False -> Latin.any UnknownFieldP >>= \case
+      ',' -> parserAsmKeyValue b1
+      '\n' -> lineSepAndEnd UnknownFieldJ *> P.effect (Builder.freeze b1)
+      '\r' -> lineSepAndEnd UnknownFieldJ *> P.effect (Builder.freeze b1)
+      _ -> P.fail UnknownFieldD
+
+lineSepAndEnd :: e -> Parser e s ()
+lineSepAndEnd e = do
+  P.skipWhile (\c -> c == 0x0A || c == 0x0D)
+  P.endOfInput e
 
 quotedBytes :: e -> Parser e s Bytes
 quotedBytes e = Latin.char e '"' *> Latin.takeTrailedBy e '"'

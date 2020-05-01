@@ -115,6 +115,7 @@ asm_3 = pack $ concat
   , "https://www.example.com/other/resource/page?foo=bar&baz=1"
   , "\\r\\nAccept-Encoding: gzip, deflate, br\\r\\nAccept-Language: "
   , "en-US,en;q=0.9\\r\\n\\r\\n\""
+  , "\n\n" -- Tests that we can handle spurious trailing newlines
   ]
 
 asm_4 :: Bytes
