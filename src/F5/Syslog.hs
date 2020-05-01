@@ -46,6 +46,7 @@ data Attribute
   | Headers !(Chunks Header)
   | Action {-# UNPACK #-} !Bytes
   | ResponseCode {-# UNPACK #-} !Word64
+  | RequestBody {-# UNPACK #-} !Bytes
   | RequestTarget {-# UNPACK #-} !Bytes
   | Severity {-# UNPACK #-} !Bytes
   deriving stock (Eq)
@@ -247,9 +248,20 @@ parserAsmKeyValue !b0 = do
            Latin.char4 MalformedHttpVersion '\\' 'r' '\\' 'n'
            -- Parse all the headers
            headers <- allHeaders =<< P.effect Builder.new
-           Latin.char UnknownFieldK '"'
            let !x = Headers headers
-           P.effect (Builder.push x b0)
+           b1 <- P.effect (Builder.push x b0)
+           Latin.trySatisfy (== '"') >>= \case
+             True -> pure b1
+             False -> do
+               -- Hmmm... we could actually take advantage of the
+               -- Content-Length header in here. But that is complicated.
+               -- Takes until a double quote character is found.
+               !body <- P.takeTrailedBy UnknownFieldG 0x22
+               case escapeSequences body of
+                 Nothing -> pure b1
+                 Just body' -> do
+                   let !y = RequestBody body'
+                   P.effect (Builder.push y b1)
     6  | Bytes.equalsCString (Ptr "method"#) key -> do
            !y <- quotedBytes MalformedMethod
            let !x = RequestMethod y
@@ -275,6 +287,11 @@ quotedPort e = Latin.char e '"' *> Latin.decWord16 e <* Latin.char e '"'
 
 quotedW64 :: e -> Parser e s Word64
 quotedW64 e = Latin.char e '"' *> Latin.decWord64 e <* Latin.char e '"'
+
+-- TODO: Make this actually escape things. At the least, carriage
+-- returns and newlines are encoded by F5 in the normal way.
+escapeSequences :: Bytes -> Maybe Bytes
+escapeSequences = Just
 
 parserAsm :: Bytes -> Parser Error s Log
 parserAsm !host = do

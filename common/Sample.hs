@@ -1,3 +1,5 @@
+{-# language OverloadedStrings #-}
+{-# LANGUAGE QuasiQuotes #-}
 {-# language TypeApplications #-}
 
 module Sample
@@ -6,12 +8,16 @@ module Sample
   , asm_1
   , asm_2
   , asm_3
+  , asm_4
   ) where
 
 import Data.Bytes (Bytes)
 import Data.Word (Word8)
 import Data.Char (ord)
+import Data.Text.Encoding (encodeUtf8)
+import NeatInterpolation (text)
 import qualified Data.Bytes as Bytes
+import qualified Data.Text as T
 import qualified GHC.Exts as Exts
 
 -- Sample Logs. If you add a sample log to this file, please
@@ -111,6 +117,30 @@ asm_3 = pack $ concat
   , "en-US,en;q=0.9\\r\\n\\r\\n\""
   ]
 
+asm_4 :: Bytes
+asm_4 = pack $ T.unpack $ T.replace "\n" ""
+  [text|
+    Oct 1 12:09:21 FOO-BAR-F5-Appliance-X.example.com ASM:unit_hostname=
+    "FOO-BAR-F5-Appliance-X.example.com",management_ip_address="192.0.2.13",
+    http_class_name="/Foo/Bar.COM",web_application_name=
+    "/Foo/Bar.COM",policy_name="/Common/Foo-Bar.COM",
+    policy_apply_date="2019-12-31 09:35:53",violations="",support_id=
+    "13266532618789046730",request_status="passed",response_code="200",
+    ip_client="192.0.2.65",route_domain="0",method="POST",protocol=
+    "HTTPS",query_string="",x_forwarded_for_header_value="N/A",sig_ids="",
+    sig_names="",date_time="2020-05-01 12:09:21",severity="Informational",
+    attack_type="",geo_location="US",ip_address_intelligence="N/A",
+    username="N/A",session_id="de25fe518d3c28ed",src_port="6229",
+    dest_port="443",dest_ip="192.0.2.54",sub_violations="",virus_name="N/A",
+    uri="/buzz",request="POST /buzz HTTP/1.1\r\n
+    Accept: */*\r\nContent-Type: application/x-www-form-urlencoded; charset=
+    UTF-8\r\nReferer: https://www.example.com/foobar\r\nAccept-Language: en-
+    US\r\nAccept-Encoding: gzip, deflate\r\nUser-Agent: Mozilla/
+    5.0 (Windows NT 10.0; WOW64; Trident/7.0; rv:11.0) like Gecko\r\n
+    Host: www.example.com\r\nContent-Length: 89\r\nConnection: Keep-
+    Alive\r\nCache-Control: no-cache\r\nCookie: foo=1234; website#
+    lang=en;\r\n\r\nmy.param=5&your.param=6\n\n" 
+  |]
 
 -- Incomplete Reference Parser
 -- 

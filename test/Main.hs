@@ -31,6 +31,8 @@ main = do
   testAsm2
   putStrLn "testSslAsm3"
   testAsm3
+  putStrLn "testSslAsm4"
+  testAsm4
   putStrLn "End"
 
 testSslAccess1 :: IO ()
@@ -75,6 +77,16 @@ testAsm2 = case decode S.asm_2 of
 
 testAsm3 :: IO ()
 testAsm3 = case decode S.asm_3 of
+  Left err -> throwIO err
+  Right (LogAsmKeyValue pairs) ->
+    if | notElem (DestinationPort 443) pairs -> fail "bad destination port"
+       | notElem (ResponseCode 200) pairs -> fail "bad response code"
+       | notElem (Severity (Bytes.fromLatinString "Informational")) pairs -> fail "bad severity"
+       | otherwise -> pure ()
+  Right _ -> fail "wrong log type"
+
+testAsm4 :: IO ()
+testAsm4 = case decode S.asm_4 of
   Left err -> throwIO err
   Right (LogAsmKeyValue pairs) ->
     if | notElem (DestinationPort 443) pairs -> fail "bad destination port"
