@@ -47,6 +47,7 @@ data Attribute
   | Action {-# UNPACK #-} !Bytes
   | ResponseCode {-# UNPACK #-} !Word64
   | RequestTarget {-# UNPACK #-} !Bytes
+  | Severity {-# UNPACK #-} !Bytes
   deriving stock (Eq)
 
 data Asm = Asm
@@ -127,6 +128,7 @@ data Error
   | MalformedScheme
   | MalformedSecondarySourceIp
   | MalformedSecondaryTimestamp
+  | MalformedSeverity
   | MalformedSourceIp
   | MalformedSourcePort
   | MissingIdentifier
@@ -221,6 +223,10 @@ parserAsmKeyValue !b0 = do
     9  | Bytes.equalsCString (Ptr "dest_port"#) key -> do
            !port <- quotedPort MalformedDestinationPort
            let !x = DestinationPort port
+           P.effect (Builder.push x b0)
+    8  | Bytes.equalsCString (Ptr "severity"#) key -> do
+           !sev <- quotedBytes MalformedSeverity
+           let !x = Severity sev
            P.effect (Builder.push x b0)
     7  | Bytes.equalsCString (Ptr "dest_ip"#) key -> do
            !addr <- quotedIp MalformedDestinationIp

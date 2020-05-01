@@ -13,6 +13,7 @@ import Data.Char (ord)
 import Data.Bytes.Types (Bytes(Bytes))
 
 import qualified Data.Primitive as PM
+import qualified Data.Bytes as Bytes
 import qualified GHC.Exts as Exts
 import qualified Net.IPv4 as IPv4
 import qualified Sample as S
@@ -78,6 +79,7 @@ testAsm3 = case decode S.asm_3 of
   Right (LogAsmKeyValue pairs) ->
     if | notElem (DestinationPort 443) pairs -> fail "bad destination port"
        | notElem (ResponseCode 200) pairs -> fail "bad response code"
+       | notElem (Severity (Bytes.fromLatinString "Informational")) pairs -> fail "bad severity"
        | otherwise -> pure ()
   Right _ -> fail "wrong log type"
 
