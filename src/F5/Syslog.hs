@@ -38,17 +38,22 @@ data Log
   | LogAsmKeyValue (Chunks Attribute)
 
 data Attribute
-  = DestinationIp {-# UNPACK #-} !IPv4
+  = Action {-# UNPACK #-} !Bytes
+  | AttackType {-# UNPACK #-} !Bytes
+  | DestinationIp {-# UNPACK #-} !IPv4 -- ^ The F5 IP address, not the server IP address.
   | DestinationPort {-# UNPACK #-} !Word16
-  | SourcePort {-# UNPACK #-} !Word16
-  | RequestMethod {-# UNPACK #-} !Bytes
-  | Scheme {-# UNPACK #-} !Bytes
+  | GeoLocation {-# UNPACK #-} !Bytes -- ^ Two-letter country code
   | Headers !(Chunks Header)
-  | Action {-# UNPACK #-} !Bytes
-  | ResponseCode {-# UNPACK #-} !Word64
+  | IpClient {-# UNPACK #-} !IPv4 -- ^ IP address of the client, @ip_client@.
+  | ManagementIpAddress {-# UNPACK #-} !IPv4 -- ^ IP address of F5.
   | RequestBody {-# UNPACK #-} !Bytes
+  | RequestMethod {-# UNPACK #-} !Bytes
+  | RequestStatus {-# UNPACK #-} !Bytes
   | RequestTarget {-# UNPACK #-} !Bytes
+  | ResponseCode {-# UNPACK #-} !Word64
+  | Scheme {-# UNPACK #-} !Bytes
   | Severity {-# UNPACK #-} !Bytes
+  | SourcePort {-# UNPACK #-} !Word16
   deriving stock (Eq)
 
 data Asm = Asm
@@ -114,16 +119,21 @@ data Error
   | LeadingDatetimeSecond
   | MalformedAction
   | MalformedApplianceIp
+  | MalformedAttackType
   | MalformedClientIdentity
   | MalformedClientIp
   | MalformedDestinationIp
   | MalformedDestinationPort
+  | MalformedGeoLocation
   | MalformedHeaderName
   | MalformedHeaderValue
   | MalformedHttpPath
   | MalformedHttpRequestMethod
   | MalformedHttpVersion
+  | MalformedIpClient
+  | MalformedManagementIpAddress
   | MalformedMethod
+  | MalformedRequestStatus
   | MalformedRequestTarget
   | MalformedResponseCode
   | MalformedScheme
@@ -213,17 +223,40 @@ parserAsmKeyValue :: Builder s Attribute -> Parser Error s (Chunks Attribute)
 parserAsmKeyValue !b0 = do
   key <- Latin.takeTrailedBy EndOfInputInKey '='
   b1 <- case Bytes.length key of
+    21 | Bytes.equalsCString (Ptr "management_ip_address"#) key -> do
+           !addr <- quotedIp MalformedManagementIpAddress
+           let !x = ManagementIpAddress addr
+           P.effect (Builder.push x b0)
+    14 | Bytes.equalsCString (Ptr "request_status"#) key -> do
+           !txt <- quotedBytes MalformedRequestStatus
+           let !x = RequestStatus txt
+           P.effect (Builder.push x b0)
     13 | Bytes.equalsCString (Ptr "response_code"#) key -> do
-          !code <- quotedW64 MalformedResponseCode
-          let !x = ResponseCode code
-          P.effect (Builder.push x b0)
+           !code <- quotedW64 MalformedResponseCode
+           let !x = ResponseCode code
+           P.effect (Builder.push x b0)
+    12 | Bytes.equalsCString (Ptr "geo_location"#) key -> do
+           !txt <- quotedBytes MalformedGeoLocation
+           let !x = GeoLocation txt
+           P.effect (Builder.push x b0)
     11 | Bytes.equalsCString (Ptr "source_port"#) key -> do
            !port <- quotedPort MalformedSourcePort
            let !x = SourcePort port
            P.effect (Builder.push x b0)
+       | Bytes.equalsCString (Ptr "attack_type"#) key -> do
+           !txt <- quotedBytes MalformedAttackType
+           if Bytes.null txt
+             then pure b0
+             else do
+               let !x = AttackType txt
+               P.effect (Builder.push x b0)
     9  | Bytes.equalsCString (Ptr "dest_port"#) key -> do
            !port <- quotedPort MalformedDestinationPort
            let !x = DestinationPort port
+           P.effect (Builder.push x b0)
+       | Bytes.equalsCString (Ptr "ip_client"#) key -> do
+           !addr <- quotedIp MalformedIpClient
+           let !x = IpClient addr
            P.effect (Builder.push x b0)
     8  | Bytes.equalsCString (Ptr "severity"#) key -> do
            !sev <- quotedBytes MalformedSeverity

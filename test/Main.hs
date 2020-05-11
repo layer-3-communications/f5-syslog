@@ -91,6 +91,7 @@ testAsm4 = case decode S.asm_4 of
   Right (LogAsmKeyValue pairs) ->
     if | notElem (DestinationPort 443) pairs -> fail "bad destination port"
        | notElem (ResponseCode 200) pairs -> fail "bad response code"
+       | notElem (IpClient (IPv4.fromOctets 192 0 2 65)) pairs -> fail "bad client ip"
        | notElem (Severity (Bytes.fromLatinString "Informational")) pairs -> fail "bad severity"
        | otherwise -> pure ()
   Right _ -> fail "wrong log type"
