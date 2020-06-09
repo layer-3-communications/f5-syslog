@@ -47,6 +47,7 @@ data Attribute
   | Headers !(Chunks Header)
   | IpClient {-# UNPACK #-} !IPv4 -- ^ IP address of the client, @ip_client@.
   | ManagementIpAddress {-# UNPACK #-} !IPv4 -- ^ IP address of F5.
+  | Protocol {-# UNPACK #-} !Bytes
   | RequestBody {-# UNPACK #-} !Bytes
   | RequestMethod {-# UNPACK #-} !Bytes
   | RequestStatus {-# UNPACK #-} !Bytes
@@ -134,6 +135,7 @@ data Error
   | MalformedIpClient
   | MalformedManagementIpAddress
   | MalformedMethod
+  | MalformedProtocol
   | MalformedRequestStatus
   | MalformedRequestTarget
   | MalformedResponseCode
@@ -266,6 +268,10 @@ parserAsmKeyValue !b0 = do
     7  | Bytes.equalsCString (Ptr "dest_ip"#) key -> do
            !addr <- quotedIp MalformedDestinationIp
            let !x = DestinationIp addr
+           P.effect (Builder.push x b0)
+       | Bytes.equalsCString (Ptr "protocol"#) key -> do
+           !txt <- quotedBytes MalformedProtocol
+           let !x = Protocol txt
            P.effect (Builder.push x b0)
        | Bytes.equalsCString (Ptr "request"#) key -> do
            Latin.char MalformedHttpRequestMethod '"'
