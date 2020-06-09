@@ -56,6 +56,7 @@ data Attribute
   | Scheme {-# UNPACK #-} !Bytes
   | Severity {-# UNPACK #-} !Bytes
   | SourcePort {-# UNPACK #-} !Word16
+  | Uri {-# UNPACK #-} !Bytes
   deriving stock (Eq)
 
 data Asm = Asm
@@ -145,6 +146,7 @@ data Error
   | MalformedSeverity
   | MalformedSourceIp
   | MalformedSourcePort
+  | MalformedUri
   | MissingIdentifier
   | MissingNewlineAfterHeader
   | MissingNewlineAfterLastHeader
@@ -305,6 +307,10 @@ parserAsmKeyValue !b0 = do
     6  | Bytes.equalsCString (Ptr "method"#) key -> do
            !y <- quotedBytes MalformedMethod
            let !x = RequestMethod y
+           P.effect (Builder.push x b0)
+    3  | Bytes.equalsCString (Ptr "uri"#) key -> do
+           !y <- quotedBytes MalformedUri
+           let !x = Uri y
            P.effect (Builder.push x b0)
     _ -> do
       Latin.char UnknownFieldG '"'
