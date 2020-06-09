@@ -12,6 +12,7 @@ module F5.Syslog
   , SslRequest(..)
   , SslAccess(..)
   , Attribute(..)
+  , Header(..)
   , decode
   ) where
 
