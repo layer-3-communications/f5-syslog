@@ -56,7 +56,9 @@ data Attribute
   | Scheme {-# UNPACK #-} !Bytes
   | Severity {-# UNPACK #-} !Bytes
   | SourcePort {-# UNPACK #-} !Word16
+  | SupportId {-# UNPACK #-} !Word64
   | Uri {-# UNPACK #-} !Bytes
+  | Username {-# UNPACK #-} !Bytes
   deriving stock (Eq)
 
 data Asm = Asm
@@ -146,7 +148,9 @@ data Error
   | MalformedSeverity
   | MalformedSourceIp
   | MalformedSourcePort
+  | MalformedSupportId
   | MalformedUri
+  | MalformedUsername
   | MissingIdentifier
   | MissingNewlineAfterHeader
   | MissingNewlineAfterLastHeader
@@ -263,10 +267,21 @@ parserAsmKeyValue !b0 = do
            !addr <- quotedIp MalformedIpClient
            let !x = IpClient addr
            P.effect (Builder.push x b0)
+       | Bytes.equalsCString (Ptr "support_id"#) key -> do
+           !addr <- quotedW64 MalformedSupportId
+           let !x = SupportId addr
+           P.effect (Builder.push x b0)
     8  | Bytes.equalsCString (Ptr "severity"#) key -> do
            !sev <- quotedBytes MalformedSeverity
            let !x = Severity sev
            P.effect (Builder.push x b0)
+       | Bytes.equalsCString (Ptr "username"#) key -> do
+           !name <- quotedBytes MalformedUsername
+           if Bytes.equalsCString (Ptr "N/A"# ) name
+             then pure b0
+             else do
+               let !x = Username name
+               P.effect (Builder.push x b0)
     7  | Bytes.equalsCString (Ptr "dest_ip"#) key -> do
            !addr <- quotedIp MalformedDestinationIp
            let !x = DestinationIp addr
