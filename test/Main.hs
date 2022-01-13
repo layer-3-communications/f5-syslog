@@ -14,6 +14,7 @@ import Data.Bytes.Types (Bytes(Bytes))
 
 import qualified Data.Primitive as PM
 import qualified Data.Bytes as Bytes
+import qualified Data.Bytes.Text.Latin1 as Latin1
 import qualified GHC.Exts as Exts
 import qualified Net.IPv4 as IPv4
 import qualified Sample as S
@@ -23,6 +24,8 @@ main = do
   putStrLn "Start"
   putStrLn "testSslAccess1"
   testSslAccess1
+  putStrLn "testSslAccess2"
+  testSslAccess2
   putStrLn "testSslRequest1"
   testSslRequest1
   putStrLn "testSslAsm1"
@@ -45,6 +48,19 @@ testSslAccess1 = case decode S.ssl_access_1 of
        | responseBytes /= 626 -> fail "bad response bytes"
        | client /= IPv4.fromOctets 127 0 0 1 -> fail "bad client"
        | host /= bytes "SAMPLE-HOST" -> fail "bad host"
+       | otherwise -> pure ()
+  Right _ -> fail "wrong log type"
+
+testSslAccess2 :: IO ()
+testSslAccess2 = case decode S.ssl_access_2 of
+  Left err -> throwIO err
+  Right (LogSslAccess SslAccess{path,user,responseCode,responseBytes,client,host}) ->
+    if | path /= bytes "/foo/bang" -> fail "bad path"
+       | user /= bytes "admin" -> fail "bad user"
+       | responseCode /= 200 -> fail "bad response code"
+       | responseBytes /= 2132 -> fail "bad response bytes"
+       | client /= IPv4.fromOctets 192 0 2 167 -> fail "bad client"
+       | host /= bytes "EXAMPLE-NYC" -> fail "bad host"
        | otherwise -> pure ()
   Right _ -> fail "wrong log type"
 
@@ -81,7 +97,7 @@ testAsm3 = case decode S.asm_3 of
   Right (LogAsmKeyValue pairs) ->
     if | notElem (DestinationPort 443) pairs -> fail "bad destination port"
        | notElem (ResponseCode 200) pairs -> fail "bad response code"
-       | notElem (Severity (Bytes.fromLatinString "Informational")) pairs -> fail "bad severity"
+       | notElem (Severity (Latin1.fromString "Informational")) pairs -> fail "bad severity"
        | otherwise -> pure ()
   Right _ -> fail "wrong log type"
 
@@ -92,7 +108,7 @@ testAsm4 = case decode S.asm_4 of
     if | notElem (DestinationPort 443) pairs -> fail "bad destination port"
        | notElem (ResponseCode 200) pairs -> fail "bad response code"
        | notElem (IpClient (IPv4.fromOctets 192 0 2 65)) pairs -> fail "bad client ip"
-       | notElem (Severity (Bytes.fromLatinString "Informational")) pairs -> fail "bad severity"
+       | notElem (Severity (Latin1.fromString "Informational")) pairs -> fail "bad severity"
        | otherwise -> pure ()
   Right _ -> fail "wrong log type"
 

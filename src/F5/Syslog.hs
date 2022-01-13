@@ -84,6 +84,8 @@ data SslRequest = SslRequest
     -- ^ Examples: @AES256-SHA@
   , path :: {-# UNPACK #-} !Bytes
     -- ^ Examples: @/iControl/iControlPortal.cgi@
+  , host :: {-# UNPACK #-} !Bytes
+    -- ^ Examples: @lb.example.com@, @F5-Appliance-A@
   }
 
 -- | The fields of a log of the form:
@@ -495,7 +497,7 @@ parserSslRequest !host = do
   Latin.char HttpPath ' '
   _ <- Latin.decWord64 MalformedResponseBytes
   P.endOfInput EncounteredLeftovers
-  pure (LogSslRequest (SslRequest {protocol,cipherSuite,path}))
+  pure (LogSslRequest (SslRequest {protocol,cipherSuite,path,host}))
 
 emptyBytes :: Parser e s Bytes
 emptyBytes = do

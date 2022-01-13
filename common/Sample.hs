@@ -4,6 +4,7 @@
 
 module Sample
   ( ssl_access_1
+  , ssl_access_2
   , ssl_request_1
   , asm_1
   , asm_2
@@ -39,6 +40,14 @@ ssl_access_1 = pack $ concat
   [ "Dec 6 10:02:54 SAMPLE-HOST info logger: "
   , "[ssl_acc] 127.0.0.1 - - [06/Dec/2019:10:02:54 -0600] "
   , "\"/iControl/iControlPortal.cgi\" 200 626"
+  ]
+
+ssl_access_2 :: Bytes
+ssl_access_2 = pack $ concat
+  [ "<182>Jan 13 09:36:05 EXAMPLE-NYC "
+  , "info logger: [ssl_acc] 192.0.2.167 - admin "
+  , "[13/Jan/2022:09:36:05 -0600] \"/foo/bang\" "
+  , "200 2132"
   ]
 
 ssl_request_1 :: Bytes
