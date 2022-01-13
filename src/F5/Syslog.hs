@@ -86,6 +86,8 @@ data SslRequest = SslRequest
     -- ^ Examples: @/iControl/iControlPortal.cgi@
   , host :: {-# UNPACK #-} !Bytes
     -- ^ Examples: @lb.example.com@, @F5-Appliance-A@
+  , client :: {-# UNPACK #-} !IPv4
+    -- ^ Examples: 127.0.0.1
   }
 
 -- | The fields of a log of the form:
@@ -488,7 +490,7 @@ parserSslRequest !host = do
   Latin.char HttpTimestamp '['
   Latin.skipTrailedBy HttpTimestamp ']'
   Latin.char HttpTimestamp ' '
-  _ <- IPv4.parserUtf8Bytes MalformedClientIp
+  client <- IPv4.parserUtf8Bytes MalformedClientIp
   Latin.char MalformedClientIp ' '
   protocol <- P.takeTrailedBy SslProtocol 0x20 -- space
   cipherSuite <- P.takeTrailedBy SslCipherSuite 0x20 -- space
@@ -497,7 +499,7 @@ parserSslRequest !host = do
   Latin.char HttpPath ' '
   _ <- Latin.decWord64 MalformedResponseBytes
   P.endOfInput EncounteredLeftovers
-  pure (LogSslRequest (SslRequest {protocol,cipherSuite,path,host}))
+  pure (LogSslRequest (SslRequest {protocol,cipherSuite,path,host,client}))
 
 emptyBytes :: Parser e s Bytes
 emptyBytes = do
