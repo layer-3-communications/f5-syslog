@@ -41,6 +41,7 @@ data Log
 data Attribute
   = Action {-# UNPACK #-} !Bytes
   | AttackType {-# UNPACK #-} !Bytes
+  | BlockingExceptionReason {-# UNPACK #-} !Bytes
   | DestinationIp {-# UNPACK #-} !IPv4 -- ^ The F5 IP address, not the server IP address.
   | DestinationPort {-# UNPACK #-} !Word16
   | GeoLocation {-# UNPACK #-} !Bytes -- ^ Two-letter country code
@@ -129,6 +130,7 @@ data Error
   | MalformedAction
   | MalformedApplianceIp
   | MalformedAttackType
+  | MalformedBlockingExceptionReason
   | MalformedClientIdentity
   | MalformedClientIp
   | MalformedDestinationIp
@@ -236,6 +238,10 @@ parserAsmKeyValue :: Builder s Attribute -> Parser Error s (Chunks Attribute)
 parserAsmKeyValue !b0 = do
   key <- Latin.takeTrailedBy EndOfInputInKey '='
   b1 <- case Bytes.length key of
+    25 | Bytes.equalsCString (Ptr "blocking_exception_reason"#) key -> do
+           !addr <- quotedBytes MalformedBlockingExceptionReason
+           let !x = BlockingExceptionReason addr
+           P.effect (Builder.push x b0)
     21 | Bytes.equalsCString (Ptr "management_ip_address"#) key -> do
            !addr <- quotedIp MalformedManagementIpAddress
            let !x = ManagementIpAddress addr
