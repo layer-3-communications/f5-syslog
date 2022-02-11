@@ -269,6 +269,10 @@ parserAsmKeyValue !b0 = do
              else do
                let !x = AttackType txt
                P.effect (Builder.push x b0)
+    10 | Bytes.equalsCString (Ptr "support_id"#) key -> do
+           !addr <- quotedW64 MalformedSupportId
+           let !x = SupportId addr
+           P.effect (Builder.push x b0)
     9  | Bytes.equalsCString (Ptr "dest_port"#) key -> do
            !port <- quotedPort MalformedDestinationPort
            let !x = DestinationPort port
@@ -276,10 +280,6 @@ parserAsmKeyValue !b0 = do
        | Bytes.equalsCString (Ptr "ip_client"#) key -> do
            !addr <- quotedIp MalformedIpClient
            let !x = IpClient addr
-           P.effect (Builder.push x b0)
-       | Bytes.equalsCString (Ptr "support_id"#) key -> do
-           !addr <- quotedW64 MalformedSupportId
-           let !x = SupportId addr
            P.effect (Builder.push x b0)
     8  | Bytes.equalsCString (Ptr "severity"#) key -> do
            !sev <- quotedBytes MalformedSeverity
