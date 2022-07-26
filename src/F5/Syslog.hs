@@ -60,6 +60,7 @@ data Attribute
   | SupportId {-# UNPACK #-} !Word64
   | Uri {-# UNPACK #-} !Bytes
   | Username {-# UNPACK #-} !Bytes
+  | ViolationRating {-# UNPACK #-} !Word64
   deriving stock (Eq)
 
 data Asm = Asm
@@ -157,6 +158,7 @@ data Error
   | MalformedSupportId
   | MalformedUri
   | MalformedUsername
+  | MalformedViolationRating
   | MissingIdentifier
   | MissingNewlineAfterHeader
   | MissingNewlineAfterLastHeader
@@ -245,6 +247,10 @@ parserAsmKeyValue !b0 = do
     21 | Bytes.equalsCString (Ptr "management_ip_address"#) key -> do
            !addr <- quotedIp MalformedManagementIpAddress
            let !x = ManagementIpAddress addr
+           P.effect (Builder.push x b0)
+    16 | Bytes.equalsCString (Ptr "violation_rating"#) key -> do
+           !txt <- quotedW64 MalformedViolationRating
+           let !x = ViolationRating txt
            P.effect (Builder.push x b0)
     14 | Bytes.equalsCString (Ptr "request_status"#) key -> do
            !txt <- quotedBytes MalformedRequestStatus
