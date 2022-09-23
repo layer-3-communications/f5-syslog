@@ -48,6 +48,7 @@ data Attribute
   | Headers !(Chunks Header)
   | IpClient {-# UNPACK #-} !IPv4 -- ^ IP address of the client, @ip_client@.
   | ManagementIpAddress {-# UNPACK #-} !IPv4 -- ^ IP address of F5.
+  | PolicyName {-# UNPACK #-} !Bytes
   | Protocol {-# UNPACK #-} !Bytes
   | RequestBody {-# UNPACK #-} !Bytes
   | RequestMethod {-# UNPACK #-} !Bytes
@@ -145,6 +146,7 @@ data Error
   | MalformedIpClient
   | MalformedManagementIpAddress
   | MalformedMethod
+  | MalformedPolicyName
   | MalformedProtocol
   | MalformedRequestStatus
   | MalformedRequestTarget
@@ -267,6 +269,10 @@ parserAsmKeyValue !b0 = do
     11 | Bytes.equalsCString (Ptr "source_port"#) key -> do
            !port <- quotedPort MalformedSourcePort
            let !x = SourcePort port
+           P.effect (Builder.push x b0)
+       | Bytes.equalsCString (Ptr "policy_name"#) key -> do
+           !txt <- quotedBytes MalformedPolicyName
+           let !x = PolicyName txt
            P.effect (Builder.push x b0)
        | Bytes.equalsCString (Ptr "attack_type"#) key -> do
            !txt <- quotedBytes MalformedAttackType
