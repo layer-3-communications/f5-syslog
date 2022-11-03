@@ -25,6 +25,7 @@ import Data.Word (Word16,Word64)
 import GHC.Exts (Ptr(Ptr))
 import Net.Types (IPv4)
 
+import qualified Chronos
 import qualified Net.IPv4 as IPv4
 import qualified Data.Builder.ST as Builder
 import qualified Data.Bytes as Bytes
@@ -48,6 +49,7 @@ data Attribute
   | Headers !(Chunks Header)
   | IpClient {-# UNPACK #-} !IPv4 -- ^ IP address of the client, @ip_client@.
   | ManagementIpAddress {-# UNPACK #-} !IPv4 -- ^ IP address of F5.
+  | PolicyApplyDate {-# UNPACK #-} !Chronos.Datetime
   | PolicyName {-# UNPACK #-} !Bytes
   | Protocol {-# UNPACK #-} !Bytes
   | RequestBody {-# UNPACK #-} !Bytes
@@ -146,6 +148,7 @@ data Error
   | MalformedIpClient
   | MalformedManagementIpAddress
   | MalformedMethod
+  | MalformedPolicyApplyDate
   | MalformedPolicyName
   | MalformedProtocol
   | MalformedRequestStatus
@@ -250,6 +253,13 @@ parserAsmKeyValue !b0 = do
            !addr <- quotedIp MalformedManagementIpAddress
            let !x = ManagementIpAddress addr
            P.effect (Builder.push x b0)
+    17 | Bytes.equalsCString (Ptr "policy_apply_date"#) key -> do
+           !txt <- quotedBytes MalformedPolicyApplyDate
+           case Chronos.decodeUtf8BytesIso8601ZonelessSpaced txt of
+             Just dt -> do
+               let !x = PolicyApplyDate dt
+               P.effect (Builder.push x b0)
+             Nothing -> pure b0
     16 | Bytes.equalsCString (Ptr "violation_rating"#) key -> do
            !txt <- quotedW64 MalformedViolationRating
            let !x = ViolationRating txt
