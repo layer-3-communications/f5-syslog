@@ -45,6 +45,7 @@ data Attribute
   | BlockingExceptionReason {-# UNPACK #-} !Bytes
   | DestinationIp {-# UNPACK #-} !IPv4 -- ^ The F5 IP address, not the server IP address.
   | DestinationPort {-# UNPACK #-} !Word16
+  | ForwardedForHeaderValue {-# UNPACK #-} !Bytes
   | GeoLocation {-# UNPACK #-} !Bytes -- ^ Two-letter country code
   | Headers !(Chunks Header)
   | IpClient {-# UNPACK #-} !IPv4 -- ^ IP address of the client, @ip_client@.
@@ -139,6 +140,7 @@ data Error
   | MalformedClientIp
   | MalformedDestinationIp
   | MalformedDestinationPort
+  | MalformedForwardedForHeaderValue
   | MalformedGeoLocation
   | MalformedHeaderName
   | MalformedHeaderValue
@@ -245,6 +247,10 @@ parserAsmKeyValue :: Builder s Attribute -> Parser Error s (Chunks Attribute)
 parserAsmKeyValue !b0 = do
   key <- Latin.takeTrailedBy EndOfInputInKey '='
   b1 <- case Bytes.length key of
+    28 | Bytes.equalsCString (Ptr "x_forwarded_for_header_value"#) key -> do
+           !val <- quotedBytes MalformedForwardedForHeaderValue
+           let !x = ForwardedForHeaderValue val
+           P.effect (Builder.push x b0)
     25 | Bytes.equalsCString (Ptr "blocking_exception_reason"#) key -> do
            !addr <- quotedBytes MalformedBlockingExceptionReason
            let !x = BlockingExceptionReason addr
